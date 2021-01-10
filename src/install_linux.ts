@@ -21,7 +21,7 @@ export function install(config: Config): Promise<Installed> {
         if (config.version === 'stable') {
             return downloadStableNeovim('linux', config.token);
         } else {
-            return downloadNeovim(config.version, 'linux');
+            return downloadNeovim(config.version, 'linux', config.url);
         }
     } else {
         if (config.version === 'stable') {

@@ -5,11 +5,14 @@ import { downloadNeovim } from '../src/neovim';
 
 describe('downloadNeovim()', function () {
     it('throws an error when release asset not found', async function () {
-        await A.rejects(() => downloadNeovim('v0.4.999', 'linux'), /Downloading asset failed/);
+        await A.rejects(
+            () => downloadNeovim('v0.4.999', 'linux', 'https://github.com/go-nvim/neovim/releases/download'),
+            /Downloading asset failed/,
+        );
     });
 
     context('with mocking fetch()', function () {
-        let downloadNeovim: (tag: string, os: string) => Promise<unknown>;
+        let downloadNeovim: (tag: string, os: string, url: string) => Promise<unknown>;
         let downloadStableNeovim: (os: string, token: string | null) => Promise<unknown>;
 
         before(function () {
@@ -27,7 +30,11 @@ describe('downloadNeovim()', function () {
 
         it('throws an error when receiving unsuccessful response', async function () {
             try {
-                const ret = await downloadNeovim('nightly', 'linux');
+                const ret = await downloadNeovim(
+                    'nightly',
+                    'linux',
+                    'https://github.com/go-nvim/neovim/releases/download',
+                );
                 A.ok(false, `Exception was not thrown: ${ret}`);
             } catch (err) {
                 const msg = err.message;

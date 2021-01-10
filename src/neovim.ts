@@ -45,18 +45,18 @@ async function unarchiveAsset(asset: string, os: Os): Promise<string> {
 }
 
 // version = 'stable' or 'nightly' or version string
-export async function downloadNeovim(version: string, os: Os): Promise<Installed> {
+export async function downloadNeovim(version: string, os: Os, url: string): Promise<Installed> {
     const file = assetFileName(os);
     const destDir = path.join(homedir(), 'nvim');
-    const url = `https://github.com/neovim/neovim/releases/download/${version}/${file}`;
-    console.log(`Downloading Neovim ${version} on ${os} from ${url} to ${destDir}`);
+    const uri = `${url}/${version}/${file}`;
+    console.log(`Downloading Neovim ${version} on ${os} from ${uri} to ${destDir}`);
 
     const dlDir = await makeTmpdir();
     const asset = path.join(dlDir, file);
 
     try {
         core.debug(`Downloading asset ${asset}`);
-        const response = await fetch(url);
+        const response = await fetch(uri);
         if (!response.ok) {
             throw new Error(`Downloading asset failed: ${response.statusText}`);
         }
@@ -76,7 +76,7 @@ export async function downloadNeovim(version: string, os: Os): Promise<Installed
         };
     } catch (err) {
         core.debug(err.stack);
-        let msg = `Could not download Neovim release from ${url}: ${err.message}. Please visit https://github.com/neovim/neovim/releases/tag/${version} to check the asset for ${os} was really uploaded`;
+        let msg = `Could not download Neovim release from ${uri}: ${err.message}. Please visit https://github.com/neovim/neovim/releases/tag/${version} to check the asset for ${os} was really uploaded`;
         if (version === 'nightly') {
             msg += ". Note that some assets are sometimes missing on nightly build due to Neovim's CI failure";
         }
@@ -103,7 +103,7 @@ async function fetchLatestVersion(token: string): Promise<string> {
 // using GitHub API and retry downloading an asset with the version as fallback (#5).
 export async function downloadStableNeovim(os: Os, token: string | null = null): Promise<Installed> {
     try {
-        return await downloadNeovim('stable', os); // `await` is necessary to catch excetipn
+        return await downloadNeovim('stable', os, ''); // `await` is necessary to catch excetipn
     } catch (err) {
         if (err.message.includes('Downloading asset failed:') && token !== null) {
             core.warning(
@@ -111,7 +111,7 @@ export async function downloadStableNeovim(os: Os, token: string | null = null):
             );
             const ver = await fetchLatestVersion(token);
             core.warning(`Fallback to install asset from '${ver}' release`);
-            return downloadNeovim(ver, os);
+            return downloadNeovim(ver, os, '');
         }
         throw err;
     }

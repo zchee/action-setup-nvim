@@ -5,6 +5,7 @@ export interface Config {
     readonly version: string;
     readonly neovim: boolean;
     readonly os: Os;
+    readonly url: string;
     readonly token: string | null;
 }
 
@@ -50,12 +51,17 @@ function getNeovim(): boolean {
     return getBoolean('neovim', false);
 }
 
+function getURL(): string {
+    return getInput('url');
+}
+
 export function loadConfigFromInputs(): Config {
     const neovim = getNeovim();
     return {
         version: getVersion(neovim),
         neovim,
         os: getOs(),
+        url: getURL(),
         token: getInput('token') ?? null,
     };
 }

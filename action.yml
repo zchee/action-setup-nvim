@@ -1,6 +1,6 @@
-name: 'Setup Vim'
+name: 'Setup Nvim'
 author: 'rhysd <https://rhysd.github.io>'
-description: 'Setup Vim or Neovim text editors on GitHub Actions'
+description: 'Setup Neovim text editors on GitHub Actions'
 branding:
   icon: 'edit'
   color: 'green'
@@ -18,6 +18,11 @@ inputs:
       Setting to true will install Neovim.
     required: false
     default: false
+  url:
+    description: >
+      Download release URL.
+    required: false
+    default: 'https://github.com/neovim/neovim/releases/download'
   token:
     description: >
       Personal access token for GitHub API. It is used for calling GitHub API when Neovim asset is
