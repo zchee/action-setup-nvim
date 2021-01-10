@@ -11,7 +11,7 @@ export function install(config: Config): Promise<Installed> {
             case 'stable':
                 return downloadStableNeovim('windows', config.token);
             default:
-                return downloadNeovim(config.version, 'windows');
+                return downloadNeovim(config.version, 'windows', config.url);
         }
     } else {
         switch (config.version) {

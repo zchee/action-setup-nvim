@@ -1,15 +1,38 @@
-import { homedir } from 'os';
-import * as path from 'path';
-import { promises as fs } from 'fs';
-import fetch from 'node-fetch';
-import * as core from '@actions/core';
-import * as io from '@actions/io';
-import * as github from '@actions/github';
-import { makeTmpdir, Os, exeName } from './utils';
-import { exec } from './shell';
-import type { Installed } from './install';
-
-function assetFileName(os: Os): string {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.downloadStableNeovim = exports.downloadNeovim = void 0;
+const os_1 = require("os");
+const path = __importStar(require("path"));
+const fs_1 = require("fs");
+const node_fetch_1 = __importDefault(require("node-fetch"));
+const core = __importStar(require("@actions/core"));
+const io = __importStar(require("@actions/io"));
+const github = __importStar(require("@actions/github"));
+const utils_1 = require("./utils");
+const shell_1 = require("./shell");
+function assetFileName(os) {
     switch (os) {
         case 'macos':
             return 'nvim-macos.tar.gz';
@@ -19,8 +42,7 @@ function assetFileName(os: Os): string {
             return 'nvim-win64.zip';
     }
 }
-
-function assetDirName(os: Os): string {
+function assetDirName(os) {
     switch (os) {
         case 'macos':
             return 'nvim-osx64';
@@ -30,51 +52,47 @@ function assetDirName(os: Os): string {
             return 'Neovim';
     }
 }
-
-async function unarchiveAsset(asset: string, os: Os): Promise<string> {
+async function unarchiveAsset(asset, os) {
     const dir = path.dirname(asset);
     if (asset.endsWith('.tar.gz')) {
-        await exec('tar', ['xzf', asset], { cwd: dir });
+        await shell_1.exec('tar', ['xzf', asset], { cwd: dir });
         return path.join(dir, assetDirName(os));
-    } else if (asset.endsWith('.zip')) {
-        await exec('unzip', [asset], { cwd: dir });
+    }
+    else if (asset.endsWith('.zip')) {
+        await shell_1.exec('unzip', [asset], { cwd: dir });
         return path.join(dir, assetDirName(os));
-    } else {
+    }
+    else {
         throw new Error(`FATAL: Don't know how to unarchive ${asset} on ${os}`);
     }
 }
-
 // version = 'stable' or 'nightly' or version string
-export async function downloadNeovim(version: string, os: Os, url: string): Promise<Installed> {
+async function downloadNeovim(version, os, url) {
     const file = assetFileName(os);
-    const destDir = path.join(homedir(), 'nvim');
+    const destDir = path.join(os_1.homedir(), 'nvim');
     const uri = `${url}/${version}/${file}`;
     console.log(`Downloading Neovim ${version} on ${os} from ${uri} to ${destDir}`);
-
-    const dlDir = await makeTmpdir();
+    const dlDir = await utils_1.makeTmpdir();
     const asset = path.join(dlDir, file);
-
     try {
         core.debug(`Downloading asset ${asset}`);
-        const response = await fetch(uri);
+        const response = await node_fetch_1.default(uri);
         if (!response.ok) {
             throw new Error(`Downloading asset failed: ${response.statusText}`);
         }
         const buffer = await response.buffer();
-        await fs.writeFile(asset, buffer, { encoding: null });
+        await fs_1.promises.writeFile(asset, buffer, { encoding: null });
         core.debug(`Downloaded asset ${asset}`);
-
         const unarchived = await unarchiveAsset(asset, os);
         core.debug(`Unarchived asset ${unarchived}`);
-
         await io.mv(unarchived, destDir);
         core.debug(`Installed Neovim ${version} on ${os} to ${destDir}`);
-
         return {
-            executable: exeName(true, os),
+            executable: utils_1.exeName(true, os),
             binDir: path.join(destDir, 'bin'),
         };
-    } catch (err) {
+    }
+    catch (err) {
         core.debug(err.stack);
         let msg = `Could not download Neovim release from ${uri}: ${err.message}. Please visit https://github.com/neovim/neovim/releases/tag/${version} to check the asset for ${os} was really uploaded`;
         if (version === 'nightly') {
@@ -83,8 +101,8 @@ export async function downloadNeovim(version: string, os: Os, url: string): Prom
         throw new Error(msg);
     }
 }
-
-async function fetchLatestVersion(token: string): Promise<string> {
+exports.downloadNeovim = downloadNeovim;
+async function fetchLatestVersion(token) {
     const octokit = github.getOctokit(token);
     const { data } = await octokit.repos.listReleases({ owner: 'neovim', repo: 'neovim' });
     const re = /^v\d+\.\d+\.\d+$/;
@@ -98,17 +116,15 @@ async function fetchLatestVersion(token: string): Promise<string> {
     core.debug(`No stable version was found in releases: ${JSON.stringify(data, null, 2)}`);
     throw new Error(`No stable version was found in ${data.length} releases`);
 }
-
 // Download stable asset from 'stable' release. When the asset is not found, get the latest version
 // using GitHub API and retry downloading an asset with the version as fallback (#5).
-export async function downloadStableNeovim(os: Os, token: string | null = null): Promise<Installed> {
+async function downloadStableNeovim(os, token = null) {
     try {
         return await downloadNeovim('stable', os, ''); // `await` is necessary to catch excetipn
-    } catch (err) {
+    }
+    catch (err) {
         if (err.message.includes('Downloading asset failed:') && token !== null) {
-            core.warning(
-                `Could not download stable asset. Detecting the latest stable release from GitHub API as fallback: ${err.message}`,
-            );
+            core.warning(`Could not download stable asset. Detecting the latest stable release from GitHub API as fallback: ${err.message}`);
             const ver = await fetchLatestVersion(token);
             core.warning(`Fallback to install asset from '${ver}' release`);
             return downloadNeovim(ver, os, '');
@@ -116,3 +132,5 @@ export async function downloadStableNeovim(os: Os, token: string | null = null):
         throw err;
     }
 }
+exports.downloadStableNeovim = downloadStableNeovim;
+//# sourceMappingURL=neovim.js.map

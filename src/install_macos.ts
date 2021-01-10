@@ -29,7 +29,7 @@ export function install(config: Config): Promise<Installed> {
         if (config.version === 'stable') {
             return installNeovimStable();
         } else {
-            return downloadNeovim(config.version, 'macos');
+            return downloadNeovim(config.version, 'macos', config.url);
         }
     } else {
         if (config.version === 'stable') {
